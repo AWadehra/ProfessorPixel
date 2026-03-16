@@ -1,0 +1,24 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Environment variables
+.env
+application_default_credentials.json
+qwiklabs-asl-02-93543dffae86-b7251f969a12.json
+qwiklabs-asl-02-93543dffae86-d4dc4dd6042a.json
+scenes.json
+output.mp4
+
+# Temporary files
+temp/
+*.mp4
+*.mp3
+.claude
