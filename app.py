@@ -28,7 +28,7 @@ def generate_video(topic: str, progress=gr.Progress()):
         progress(value, desc=desc)
 
     try:
-        output_path = run_pipeline(topic.strip(), progress_callback=progress_callback)
+        output_path = run_pipeline(topic.strip(), output_dir="output", progress_callback=progress_callback)
         logger.info("Video generated successfully: %s", output_path)
         return output_path
     except Exception as e:
