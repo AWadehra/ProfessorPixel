@@ -6,6 +6,7 @@ import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
+from uuid import uuid4
 
 from dotenv import load_dotenv
 from google import genai
@@ -55,8 +56,8 @@ def _download_from_gcs(gcs_uri: str, local_path: str) -> str:
     return local_path
 
 
-def generate_scene_video(scene: dict, output_dir: str) -> str:
-    """Generate a video for a single scene using Veo 2.
+def generate_scene_video(scene: dict, video_id: str, output_dir: str) -> str:
+    """Generate a video for a single scene using Veo models.
 
     Args:
         scene: A dict containing 'scene_number' and 'veo_prompt'.
@@ -68,7 +69,9 @@ def generate_scene_video(scene: dict, output_dir: str) -> str:
     scene_number = scene["scene_number"]
     scene_id = f"scene_{scene_number:03d}"
     prompt = scene["veo_prompt"]
-    output_gcs_uri = f"gs://{BUCKET}/{scene_id}/"
+    
+
+    output_gcs_uri = f"gs://{BUCKET}/video_{video_id}/{scene_id}/"
     local_path = os.path.join(output_dir, f"{scene_id}.mp4")
 
     os.makedirs(output_dir, exist_ok=True)
@@ -98,7 +101,7 @@ def generate_scene_video(scene: dict, output_dir: str) -> str:
         # Find the generated video in GCS and download it
         storage_client = storage.Client()
         bucket_obj = storage_client.bucket(BUCKET)
-        blobs = list(bucket_obj.list_blobs(prefix=f"{scene_id}/"))
+        blobs = list(bucket_obj.list_blobs(prefix=f"video_{video_id}/{scene_id}/"))
 
         video_blob = None
         for blob in blobs:
@@ -108,9 +111,10 @@ def generate_scene_video(scene: dict, output_dir: str) -> str:
 
         if video_blob is None:
             raise RuntimeError(
-                f"No .mp4 file found in gs://{BUCKET}/{scene_id}/ after generation"
+                f"No .mp4 file found in gs://{BUCKET}/video_{video_id}/{scene_id}/ after generation"
             )
 
+        # We don't need the full prefix, because it is included in the video_blob.name
         gcs_video_uri = f"gs://{BUCKET}/{video_blob.name}"
         _download_from_gcs(gcs_video_uri, local_path)
 
@@ -135,10 +139,11 @@ def generate_all_videos(scenes: list, output_dir: str) -> list[str]:
 
     async def _run_parallel() -> list[str]:
         loop = asyncio.get_event_loop()
+        video_id: str = str(uuid4())
         with ThreadPoolExecutor() as executor:
             futures = [
                 loop.run_in_executor(
-                    executor, generate_scene_video, scene, output_dir
+                    executor, generate_scene_video, scene, video_id, output_dir
                 )
                 for scene in scenes
             ]
