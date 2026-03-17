@@ -2,6 +2,8 @@
 
 **Category: Agents**
 
+**Live app:** [https://contract-negotiator-769838371886.europe-west4.run.app/](https://contract-negotiator-769838371886.europe-west4.run.app/)
+
 A multi-agent contract analysis system where three AI lawyers — a buyer's attorney, a seller's attorney, and a neutral mediator — debate your contract in real time and deliver a structured risk assessment with suggested redlines.
 
 Upload any contract (PDF, image, or pasted text) in any language. The system extracts clauses, runs dual-perspective legal analysis in parallel, conducts a 3-round adversarial debate with convergence detection, and produces a fairness-scored verdict with clause-by-clause revision recommendations.
@@ -268,6 +270,49 @@ python server.py
 ```
 
 **Required GCP APIs**: Vertex AI, Document AI, Cloud Text-to-Speech, Cloud DLP, Cloud Translation, Cloud Storage, Cloud Firestore, Google Sheets, Cloud Logging.
+
+## Deployment (Cloud Run)
+
+The app is deployed on **Google Cloud Run** and is available at:
+
+**https://contract-negotiator-769838371886.europe-west4.run.app/**
+
+### Cloud Run usage
+
+- **Region**: `europe-west4`
+- **Service**: `contract-negotiator`
+- **Ingress**: Public (`all`) — the service accepts traffic from the internet.
+- **Container**: Port 8080; concurrency 80; request timeout 300s.
+- **Resources**: 1 vCPU, 512 MiB memory per instance.
+
+### Deploy or update the service
+
+1. **Build and push the container** (e.g. with Cloud Build or local Docker to Artifact Registry), then **replace the live service** with the `service.yaml` definition:
+
+   ```bash
+   gcloud run services replace service.yaml --project="<your-gcp-project-id>"
+   ```
+
+2. **Required for `service.yaml`**:
+   - A GCP project with Cloud Run and Artifact Registry enabled.
+   - The image referenced in `service.yaml` must already exist in your Artifact Registry (e.g. `europe-west4-docker.pkg.dev/<project>/contractor-negotiator/backend`).
+   - Secrets (e.g. `gemini-api-key`) must exist in the project and be referenced as in the sample `service.yaml`.
+   - A service account with permissions for Vertex AI, Document AI, TTS, DLP, Translation, Storage, Firestore, and Sheets (as in local setup).
+
+3. **Alternative — deploy from source** (if you use Cloud Build or similar):
+
+   ```bash
+   gcloud run deploy contract-negotiator \
+     --source . \
+     --region europe-west4 \
+     --project "<your-gcp-project-id>"
+   ```
+
+After deployment, the service URL is shown in the Cloud Run console or via:
+
+```bash
+gcloud run services describe contract-negotiator --region europe-west4 --format='value(status.url)'
+```
 
 ## Project Structure
 
