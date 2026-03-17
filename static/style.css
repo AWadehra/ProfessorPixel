@@ -246,15 +246,28 @@ textarea::placeholder{color:var(--t3);font-family:var(--sans)}
 
 .rtag{display:block;text-align:center;font-family:var(--mono);font-size:.55rem;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:var(--t3);padding:.25rem .6rem;background:var(--s2);border-radius:100px;margin:.8rem auto .4rem;width:fit-content}
 
-/* ── Debate round accordion ── */
-.debate-round{border-color:rgba(201,184,255,.1)}
-.debate-round .disc-head{background:var(--s2);font-size:.82rem}
-.debate-round.open .disc-head{border-bottom:1px solid var(--b)}
-.debate-point{padding:.5rem .65rem;margin-bottom:.3rem;border-radius:var(--rs);background:rgba(255,255,255,.015)}
-.debate-point-quote{font-size:.72rem;color:var(--t3);font-style:italic;border-left:2px solid var(--t3);padding-left:.5rem;margin-bottom:.3rem;line-height:1.5}
-.debate-point-arg{font-size:.78rem;line-height:1.55;color:var(--t2)}
-.debate-concession{display:inline-block;background:rgba(125,214,160,.08);color:var(--green);padding:.08rem .4rem;border-radius:100px;font-size:.55rem;font-weight:600;font-family:var(--mono)}
-.debate-msg{padding-bottom:.3rem}
+/* ── Debate timeline ── */
+.debate-timeline{display:flex;flex-direction:column;gap:.5rem}
+
+.debate-round-card{border:1px solid var(--b);border-radius:var(--rs);overflow:hidden;transition:border-color .2s;animation:mIn .3s var(--expo) both}
+.debate-round-card:hover{border-color:var(--bh)}
+.debate-round-card.latest{border-color:rgba(201,184,255,.15)}
+
+.debate-round-header{display:flex;align-items:center;gap:.5rem;padding:.5rem .7rem;background:var(--s2);border-bottom:1px solid var(--b)}
+.debate-round-num{width:26px;height:26px;border-radius:50%;background:var(--purple-s);color:var(--purple);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.7rem;font-weight:700;flex-shrink:0;border:1.5px solid rgba(201,184,255,.2)}
+.debate-round-title{font-size:.78rem;font-weight:600;color:var(--t1)}
+
+.debate-round-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.debate-side{padding:.5rem .6rem;font-size:.78rem}
+.debate-side-buyer{border-right:1px solid var(--b)}
+
+.debate-point{padding:.4rem .5rem;margin-bottom:.25rem;border-radius:8px;background:rgba(255,255,255,.015)}
+.debate-point-quote{font-size:.68rem;color:var(--t3);font-style:italic;border-left:2px solid var(--t3);padding-left:.45rem;margin-bottom:.25rem;line-height:1.45}
+.debate-point-arg{font-size:.74rem;line-height:1.5;color:var(--t2)}
+.debate-concession{display:inline-block;background:rgba(125,214,160,.08);color:var(--green);padding:.06rem .35rem;border-radius:100px;font-size:.52rem;font-weight:600;font-family:var(--mono)}
+.debate-msg .m-lbl{font-size:.52rem;margin-bottom:.2rem}
+.debate-msg{padding:.4rem .5rem;border-left-width:2px;margin-bottom:.2rem}
+.debate-status{text-align:center;padding:.8rem;font-size:.72rem;color:var(--t3);font-family:var(--mono);animation:shimmer 1.6s ease-in-out infinite;background:linear-gradient(110deg,var(--s2) 0%,var(--s2) 40%,rgba(255,255,255,.03) 50%,var(--s2) 60%,var(--s2) 100%);background-size:200% 100%;border-radius:var(--rs);margin:.35rem 0}
 
 /* ── Structured verdict ── */
 .verdict-rec-wrap{margin:.6rem 0}
@@ -504,6 +517,9 @@ textarea::placeholder{color:var(--t3);font-family:var(--sans)}
   .score-card{flex-direction:column;align-items:flex-start;gap:.9rem}
   .gauge-wrap{margin:0 auto}
   .hm-perspectives{grid-template-columns:1fr}
+  .debate-round-grid{grid-template-columns:1fr}
+  .debate-side-buyer{border-right:none;border-bottom:1px solid var(--b)}
+  .missing-protections{grid-template-columns:1fr}
   .fstep-num{width:34px;height:34px}
   .fstep-num .material-symbols-outlined{font-size:16px}
   .fline{min-width:18px}

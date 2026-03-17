@@ -375,27 +375,38 @@ function onEv(ev) {
         setAgentContent(el.seller, statusCard('Seller\'s Lawyer', 'Analyzing clauses...', 'orange'));
       }
       break;
-    case 'BuyerRebuttal': {
-      debR++; pip('DebateRounds','on'); rmSkel(el.center);
-      const roundNum = getRebuttalRound(content, Math.ceil(debR/2));
-      if (!debateRounds[roundNum - 1]) debateRounds[roundNum - 1] = { round: roundNum, buyer: '', seller: '' };
-      debateRounds[roundNum - 1].buyer = renderStructuredDebate(content, 'b', 'Buyer argues');
-      renderDebateArena();
-      scr(el.center); prefetchTTS('BuyerRebuttal'); qTTS('BuyerRebuttal');
+    case 'BuyerRebuttal':
+      pip('DebateRounds','on'); rmSkel(el.center);
+      if (ev.is_final) {
+        debR++;
+        const fullText = T['BuyerRebuttal'] || content;
+        const roundNum = getRebuttalRound(fullText, Math.ceil(debR/2));
+        if (!debateRounds[roundNum - 1]) debateRounds[roundNum - 1] = { round: roundNum, buyer: '', seller: '' };
+        debateRounds[roundNum - 1].buyer = renderStructuredDebate(fullText, 'b', 'Buyer argues');
+        renderDebateArena();
+        scr(el.center); prefetchTTS('BuyerRebuttal'); qTTS('BuyerRebuttal');
+      } else {
+        showDebateStatus('Buyer is arguing...');
+      }
       break;
-    }
-    case 'SellerRebuttal': {
-      const roundNum = getRebuttalRound(content, Math.ceil(debR/2));
-      if (!debateRounds[roundNum - 1]) debateRounds[roundNum - 1] = { round: roundNum, buyer: '', seller: '' };
-      debateRounds[roundNum - 1].seller = renderStructuredDebate(content, 's', 'Seller counters');
-      renderDebateArena();
-      scr(el.center); prefetchTTS('SellerRebuttal'); qTTS('SellerRebuttal');
+    case 'SellerRebuttal':
+      pip('DebateRounds','on');
+      if (ev.is_final) {
+        debR++;
+        const fullText = T['SellerRebuttal'] || content;
+        const roundNum = getRebuttalRound(fullText, Math.ceil(debR/2));
+        if (!debateRounds[roundNum - 1]) debateRounds[roundNum - 1] = { round: roundNum, buyer: '', seller: '' };
+        debateRounds[roundNum - 1].seller = renderStructuredDebate(fullText, 's', 'Seller counters');
+        renderDebateArena();
+        scr(el.center); prefetchTTS('SellerRebuttal'); qTTS('SellerRebuttal');
+      } else {
+        showDebateStatus('Seller is countering...');
+      }
       break;
-    }
     case 'Mediator':
       pip('DebateRounds','ok'); pip('Mediator','on');
       if (ev.is_final) {
-        showVerdict(content);
+        showVerdict(T['Mediator'] || content);
         pip('Mediator','ok'); prefetchTTS('Mediator'); qTTS('Mediator');
       }
       break;
@@ -600,22 +611,43 @@ function renderStructuredDebate(content, side, label) {
 }
 
 function renderDebateArena() {
+  // Remove any loading status
+  var status = el.center.querySelector('.debate-status');
+  if (status) status.remove();
   // Safe: all content is from our own AI pipeline, not external user input
   let html = clauseCardHTML; // eslint-disable-line no-unsanitized/property
+  html += '<div class="debate-timeline">';
   debateRounds.forEach(function(round, i) {
     var isLatest = (i === debateRounds.length - 1);
-    var id = 'debate-round-' + (i + 1);
-    html += '<div class="disc debate-round' + (isLatest ? ' open' : '') + '">'
-      + '<div class="disc-head" role="button" tabindex="0" aria-expanded="' + String(isLatest) + '" aria-controls="' + id + '">'
-      + '<span><span class="material-symbols-outlined" style="font-size:18px;vertical-align:text-bottom;margin-right:.3rem">forum</span>Round ' + round.round + ' of 3</span>'
-      + '<span class="material-symbols-outlined disc-chev" aria-hidden="true">expand_more</span>'
-      + '</div>'
-      + '<div class="disc-body" id="' + id + '"><div class="disc-inner">'
-      + (round.buyer || '')
-      + (round.seller || '')
-      + '</div></div></div>';
+    html += '<div class="debate-round-card' + (isLatest ? ' latest' : '') + '">'
+      + '<div class="debate-round-header">'
+      + '<div class="debate-round-num">' + round.round + '</div>'
+      + '<div class="debate-round-title">Round ' + round.round + '</div>'
+      + '</div>';
+    if (round.buyer || round.seller) {
+      html += '<div class="debate-round-grid">';
+      if (round.buyer) html += '<div class="debate-side debate-side-buyer">' + round.buyer + '</div>';
+      if (round.seller) html += '<div class="debate-side debate-side-seller">' + round.seller + '</div>';
+      html += '</div>';
+    }
+    html += '</div>';
   });
+  html += '</div>';
   setAgentContent(el.center, html);
+}
+
+function showDebateStatus(message) {
+  // Show a loading indicator below the existing debate rounds
+  var existing = el.center.querySelector('.debate-status');
+  if (!existing) {
+    var statusEl = document.createElement('div');
+    statusEl.className = 'debate-status';
+    statusEl.setAttribute('role', 'status');
+    statusEl.textContent = message;
+    el.center.appendChild(statusEl);
+  } else {
+    existing.textContent = message;
+  }
 }
 
 function msg(text, side, label, isError) {
