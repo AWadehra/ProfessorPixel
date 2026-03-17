@@ -73,7 +73,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--t1);min-height:100
 .brand{display:flex;align-items:center;gap:.65rem;font-weight:600;font-size:.88rem;letter-spacing:-.01em}
 .brandmark{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,var(--blue),var(--purple));position:relative}
 .brandmark::after{content:'';position:absolute;inset:5px;border-radius:2px;background:rgba(255,255,255,.22)}
-.brandmark.sm{width:18px;height:18px;border-radius:5px}.brandmark.sm::after{inset:4px;border-radius:2px}
+.brandmark.sm{width:20px;height:20px;border-radius:6px;box-shadow:0 0 8px rgba(201,184,255,.15)}.brandmark.sm::after{inset:4px;border-radius:2px}
 .chips{display:flex;gap:.3rem;flex-wrap:wrap}
 
 .theme-toggle{display:flex;align-items:center;gap:.35rem;padding:.3rem .55rem;flex-shrink:0}
@@ -141,7 +141,9 @@ textarea::placeholder{color:var(--t3);font-family:var(--sans)}
 .fline{flex:1;height:2px;background:var(--b);min-width:28px;margin:0 .35rem;margin-bottom:1.6rem}
 
 /* ══════ ANALYSIS ══════ */
-.bar{display:flex;align-items:center;gap:1rem;padding:.65rem 1.2rem;background:rgba(15,13,19,.85);backdrop-filter:blur(20px) saturate(1.2);-webkit-backdrop-filter:blur(20px) saturate(1.2);border-bottom:1px solid var(--b);position:sticky;top:0;z-index:10}
+.bar{display:flex;align-items:center;gap:.8rem;padding:.65rem 1.2rem;background:rgba(15,13,19,.85);backdrop-filter:blur(20px) saturate(1.2);-webkit-backdrop-filter:blur(20px) saturate(1.2);border-bottom:1px solid var(--b);position:sticky;top:0;z-index:10}
+.bar-logo{font-size:22px;color:var(--purple);flex-shrink:0;opacity:.7}
+.bar>.ghost-btn{flex-shrink:0;min-width:120px;justify-content:center}
 
 /* ── Material Stepper ── */
 .stepper{display:flex;align-items:center;flex:1;justify-content:center;gap:0}
@@ -269,6 +271,16 @@ textarea::placeholder{color:var(--t3);font-family:var(--sans)}
 .debate-msg{padding:.4rem .5rem;border-left-width:2px;margin-bottom:.2rem}
 .debate-status{text-align:center;padding:.8rem;font-size:.72rem;color:var(--t3);font-family:var(--mono);animation:shimmer 1.6s ease-in-out infinite;background:linear-gradient(110deg,var(--s2) 0%,var(--s2) 40%,rgba(255,255,255,.03) 50%,var(--s2) 60%,var(--s2) 100%);background-size:200% 100%;border-radius:var(--rs);margin:.35rem 0}
 
+/* ── Status card (streaming progress) ── */
+.status-card{padding:.7rem .85rem;border-left:3px solid var(--purple);border-radius:var(--rs);background:var(--s2);animation:mIn .3s var(--expo) both}
+.status-agent{font-family:var(--mono);font-size:.62rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.25rem}
+.status-msg{font-size:.75rem;color:var(--t2);margin-bottom:.4rem}
+.dot-loader{display:flex;gap:.3rem}
+.dot-loader span{width:6px;height:6px;border-radius:50%;background:var(--t3);animation:dotBounce 1.2s ease-in-out infinite}
+.dot-loader span:nth-child(2){animation-delay:.2s}
+.dot-loader span:nth-child(3){animation-delay:.4s}
+@keyframes dotBounce{0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+
 /* ── Structured verdict ── */
 .verdict-rec-wrap{margin:.6rem 0}
 .verdict-rec{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .85rem;border-radius:100px;font-family:var(--mono);font-size:.72rem;font-weight:600}
@@ -327,7 +339,7 @@ textarea::placeholder{color:var(--t3);font-family:var(--sans)}
 .tl-btn:hover{opacity:.85}
 
 /* ── PII Banner ── */
-.pii-banner{display:flex;align-items:center;gap:.65rem;padding:.55rem .9rem;margin:.6rem;background:rgba(255,180,171,.06);border:1px solid rgba(255,180,171,.15);border-radius:var(--rs);animation:mIn .3s var(--expo);font-size:.78rem}
+.pii-banner{display:flex;align-items:center;gap:.65rem;padding:.6rem 1rem;margin:.6rem auto;max-width:720px;width:calc(100% - 1.2rem);background:rgba(255,180,171,.06);border:1px solid rgba(255,180,171,.15);border-radius:var(--rs);animation:mIn .3s var(--expo);font-size:.78rem}
 .pii-icon{color:var(--red);flex-shrink:0}
 .pii-text{flex:1;line-height:1.4}
 .pii-text strong{color:var(--red)}
@@ -509,6 +521,8 @@ textarea::placeholder{color:var(--t3);font-family:var(--sans)}
   #pan-seller{order:1}
   .pbody{max-height:50vh}
   .bar{overflow-x:auto;gap:.6rem;padding:.5rem .8rem}
+  .bar-logo{display:none}
+  .bar>.ghost-btn{min-width:auto}
   .stepper{flex-shrink:0}
   .step-circle{width:28px;height:28px}
   .step-circle .material-symbols-outlined{font-size:14px}

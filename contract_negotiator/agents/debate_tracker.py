@@ -1,18 +1,70 @@
 import json
 
-from google.adk.agents import LlmAgent, BaseAgent, LoopAgent
+from google.adk.agents import LlmAgent, BaseAgent, LoopAgent, ParallelAgent
 from google.adk.events import Event, EventActions
 from contract_negotiator.models.schemas import Rebuttal
 
 MAX_DEBATE_ROUNDS = 3
 
 
-def _buyer_rebuttal_instruction(ctx):
-    seller_analysis = ctx.state.get("seller_analysis", {})
-    buyer_analysis = ctx.state.get("buyer_analysis", {})
-    debate_history = ctx.state.get("debate_history", [])
-    debate_round = ctx.state.get("debate_round", 1)
-    return f"""You are the buyer's attorney in round {debate_round} of contract negotiations.
+# ── Debate history summarizer (Idea 4) ──
+# Compact summary instead of full JSON dump — saves ~600-800 tokens per round
+def summarize_debate_history(history):
+    """Produce a compact summary of prior debate rounds for injection into prompts."""
+    if not history:
+        return "No prior debate rounds."
+    lines = []
+    for r in history:
+        rnd = r.get("round", "?")
+        parts = []
+        for side in ("buyer_rebuttal", "seller_rebuttal"):
+            label = "Buyer" if "buyer" in side else "Seller"
+            content = r.get(side, {})
+            if r.get(side.replace("rebuttal", "failed"), False):
+                parts.append(f"  {label}: [no substantive rebuttal]")
+                continue
+            if isinstance(content, str):
+                try:
+                    content = json.loads(content)
+                except Exception:
+                    parts.append(f"  {label}: {str(content)[:200]}")
+                    continue
+            if isinstance(content, dict):
+                points = content.get("points", [])
+                concessions = [p for p in points if p.get("concession")]
+                new_concerns = content.get("new_concerns", [])
+                summary_parts = []
+                if concessions:
+                    conc_list = "; ".join(
+                        p.get("concession", "")[:80] for p in concessions
+                    )
+                    summary_parts.append(f"conceded: {conc_list}")
+                contested = [p for p in points if not p.get("concession")]
+                if contested:
+                    contested_list = "; ".join(
+                        p.get("counter_argument", "")[:60] for p in contested[:3]
+                    )
+                    summary_parts.append(
+                        f"contested {len(contested)} points: {contested_list}"
+                    )
+                if new_concerns:
+                    nc_list = "; ".join(
+                        f"Clause {nc.get('clause_number', '?')}: {nc.get('concern', '')[:40]}"
+                        for nc in new_concerns
+                    )
+                    summary_parts.append(f"new concerns: {nc_list}")
+                parts.append(f"  {label}: {'; '.join(summary_parts) or 'restated position'}")
+            else:
+                parts.append(f"  {label}: {str(content)[:200]}")
+        lines.append(f"Round {rnd}:\n" + "\n".join(parts))
+    return "\n".join(lines)
+
+
+# ── Rebuttal instructions ──
+# Static legal instruction comes FIRST (Idea 6: maximizes Vertex AI implicit prefix caching)
+# Dynamic context injected AFTER the stable prefix
+
+_BUYER_REBUTTAL_STATIC = """You are the buyer's attorney in a contract negotiation debate.
 Set "perspective" to "buyer" and "round_number" to the current round number.
 
 THE GOAL OF THIS ROUND:
@@ -32,30 +84,9 @@ REBUTTAL QUALITY EXAMPLES:
 
   BAD: "We concede nothing."
   GOOD: "We concede Clause 9's force majeure language is reasonable and withdraw our objection."
+"""
 
-Seller's analysis: {json.dumps(seller_analysis, indent=2, default=str)}
-Your previous analysis: {json.dumps(buyer_analysis, indent=2, default=str)}
-Previous debate history: {json.dumps(debate_history, indent=2, default=str)}
-Current round: {debate_round}"""
-
-
-buyer_rebuttal = LlmAgent(
-    name="BuyerRebuttal",
-    model="gemini-2.5-flash",
-    output_schema=Rebuttal,
-    output_key="buyer_rebuttal",
-    description="Buyer's rebuttal in debate",
-    instruction=_buyer_rebuttal_instruction,
-)
-
-
-def _seller_rebuttal_instruction(ctx):
-    buyer_analysis = ctx.state.get("buyer_analysis", {})
-    buyer_rebuttal = ctx.state.get("buyer_rebuttal", {})
-    seller_analysis = ctx.state.get("seller_analysis", {})
-    debate_history = ctx.state.get("debate_history", [])
-    debate_round = ctx.state.get("debate_round", 1)
-    return f"""You are the seller's attorney in round {debate_round} of contract negotiations.
+_SELLER_REBUTTAL_STATIC = """You are the seller's attorney in a contract negotiation debate.
 Set "perspective" to "seller" and "round_number" to the current round number.
 
 THE GOAL OF THIS ROUND:
@@ -76,12 +107,43 @@ REBUTTAL QUALITY EXAMPLES:
   BAD: "We concede nothing — every clause is fair."
   GOOD: "We concede Clause 12's 90-day warranty is shorter than buyer's standard. We will extend
     to 180 days."
+"""
 
+
+def _buyer_rebuttal_instruction(ctx):
+    seller_analysis = ctx.state.get("seller_analysis", {})
+    buyer_analysis = ctx.state.get("buyer_analysis", {})
+    debate_history = ctx.state.get("debate_history", [])
+    debate_round = ctx.state.get("debate_round", 1)
+    return f"""{_BUYER_REBUTTAL_STATIC}
+Current round: {debate_round}
+Seller's analysis: {json.dumps(seller_analysis, indent=2, default=str)}
+Your previous analysis: {json.dumps(buyer_analysis, indent=2, default=str)}
+Previous debate: {summarize_debate_history(debate_history)}"""
+
+
+buyer_rebuttal = LlmAgent(
+    name="BuyerRebuttal",
+    model="gemini-2.5-flash",
+    output_schema=Rebuttal,
+    output_key="buyer_rebuttal",
+    description="Buyer's rebuttal in debate",
+    instruction=_buyer_rebuttal_instruction,
+)
+
+
+def _seller_rebuttal_instruction(ctx):
+    # Idea 1: Seller no longer reads current-round buyer_rebuttal — enabling parallel execution.
+    # Seller responds to buyer's original analysis + debate history (which has prior rounds).
+    buyer_analysis = ctx.state.get("buyer_analysis", {})
+    seller_analysis = ctx.state.get("seller_analysis", {})
+    debate_history = ctx.state.get("debate_history", [])
+    debate_round = ctx.state.get("debate_round", 1)
+    return f"""{_SELLER_REBUTTAL_STATIC}
+Current round: {debate_round}
 Buyer's analysis: {json.dumps(buyer_analysis, indent=2, default=str)}
-Buyer's rebuttal: {json.dumps(buyer_rebuttal, indent=2, default=str)}
 Your previous analysis: {json.dumps(seller_analysis, indent=2, default=str)}
-Previous debate history: {json.dumps(debate_history, indent=2, default=str)}
-Current round: {debate_round}"""
+Previous debate: {summarize_debate_history(debate_history)}"""
 
 
 seller_rebuttal = LlmAgent(
@@ -94,8 +156,16 @@ seller_rebuttal = LlmAgent(
 )
 
 
+# ── Idea 1: Parallel rebuttals — buyer and seller argue simultaneously ──
+parallel_rebuttals = ParallelAgent(
+    name="ParallelRebuttals",
+    description="Buyer and seller rebuttals run simultaneously",
+    sub_agents=[buyer_rebuttal, seller_rebuttal],
+)
+
+
 class DebateTracker(BaseAgent):
-    """Tracks debate rounds, accumulates history, and validates rebuttal content."""
+    """Tracks debate rounds, accumulates history, detects convergence, and validates content."""
 
     name: str = "DebateTracker"
     description: str = "Tracks debate rounds and accumulates debate history"
@@ -132,7 +202,21 @@ class DebateTracker(BaseAgent):
         )
         failure_escalate = recent_failures >= 2
 
-        should_stop = (current_round >= MAX_DEBATE_ROUNDS) or failure_escalate
+        # ── Idea 2: Convergence detection ──
+        # After round 2+, check if both sides have converged (many concessions, no new issues)
+        convergence_escalate = False
+        if current_round >= 2 and not buyer_empty and not seller_empty:
+            convergence_escalate = self._check_convergence(
+                buyer_content, seller_content
+            )
+            if convergence_escalate:
+                ctx.session.state["debate_converged"] = True
+
+        should_stop = (
+            (current_round >= MAX_DEBATE_ROUNDS)
+            or failure_escalate
+            or convergence_escalate
+        )
 
         if failure_escalate:
             ctx.session.state["debate_terminated_early"] = True
@@ -142,12 +226,51 @@ class DebateTracker(BaseAgent):
             actions=EventActions(escalate=should_stop),
         )
 
+    @staticmethod
+    def _check_convergence(buyer_content, seller_content):
+        """Detect if debate positions have converged — no need for more rounds."""
+        buyer_concessions = 0
+        seller_concessions = 0
+        buyer_new = 0
+        seller_new = 0
+
+        for side_content, label in [
+            (buyer_content, "buyer"),
+            (seller_content, "seller"),
+        ]:
+            data = side_content
+            if isinstance(data, str):
+                try:
+                    data = json.loads(data)
+                except Exception:
+                    return False  # Can't parse — don't assume convergence
+
+            if not isinstance(data, dict):
+                return False
+
+            points = data.get("points", [])
+            concessions = sum(1 for p in points if p.get("concession"))
+            new_concerns = len(data.get("new_concerns", []))
+
+            if label == "buyer":
+                buyer_concessions = concessions
+                buyer_new = new_concerns
+            else:
+                seller_concessions = concessions
+                seller_new = new_concerns
+
+        # Converged if: both sides made concessions and neither raised new concerns
+        total_concessions = buyer_concessions + seller_concessions
+        total_new = buyer_new + seller_new
+        return total_concessions >= 2 and total_new == 0
+
 
 debate_tracker = DebateTracker()
 
+# Idea 1: LoopAgent now runs parallel rebuttals + tracker
 debate_loop = LoopAgent(
     name="DebateRounds",
     description="Multi-round adversarial debate between buyer and seller lawyers",
     max_iterations=MAX_DEBATE_ROUNDS,
-    sub_agents=[buyer_rebuttal, seller_rebuttal, debate_tracker],
+    sub_agents=[parallel_rebuttals, debate_tracker],
 )

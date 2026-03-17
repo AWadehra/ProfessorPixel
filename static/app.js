@@ -363,7 +363,9 @@ function onEv(ev) {
         pip('BuyerLawyer','ok');
         prefetchTTS('BuyerLawyer'); qTTS('BuyerLawyer');
       } else {
-        setAgentContent(el.buyer, statusCard('Buyer\'s Lawyer', 'Analyzing clauses...', 'blue'));
+        // Idea 8: Show streaming progress with token count
+        var buyerChars = (T['BuyerLawyer'] || '').length;
+        setAgentContent(el.buyer, statusCard('Buyer\'s Lawyer', 'Analyzing clauses... ' + (buyerChars > 100 ? Math.round(buyerChars/100)*100 + '+ chars' : ''), 'blue'));
       }
       break;
     case 'SellerLawyer':
@@ -372,7 +374,8 @@ function onEv(ev) {
         pip('SellerLawyer','ok');
         prefetchTTS('SellerLawyer'); qTTS('SellerLawyer');
       } else {
-        setAgentContent(el.seller, statusCard('Seller\'s Lawyer', 'Analyzing clauses...', 'orange'));
+        var sellerChars = (T['SellerLawyer'] || '').length;
+        setAgentContent(el.seller, statusCard('Seller\'s Lawyer', 'Analyzing clauses... ' + (sellerChars > 100 ? Math.round(sellerChars/100)*100 + '+ chars' : ''), 'orange'));
       }
       break;
     case 'BuyerRebuttal':
@@ -388,7 +391,9 @@ function onEv(ev) {
         renderDebateArena();
         scr(el.center); prefetchTTS('BuyerRebuttal'); qTTS('BuyerRebuttal');
       } else {
-        showDebateStatus('Buyer is arguing...');
+        // Idea 8: Show which round and side is active
+        var curRound = Math.ceil((debR + 1) / 2);
+        showDebateStatus('Round ' + curRound + ': Buyer and Seller are debating...');
       }
       break;
     case 'SellerRebuttal':
@@ -403,7 +408,8 @@ function onEv(ev) {
         renderDebateArena();
         scr(el.center); prefetchTTS('SellerRebuttal'); qTTS('SellerRebuttal');
       } else {
-        showDebateStatus('Seller is countering...');
+        var curRound = Math.ceil((debR + 1) / 2);
+        showDebateStatus('Round ' + curRound + ': Buyer and Seller are debating...');
       }
       break;
     case 'Mediator':
@@ -413,10 +419,16 @@ function onEv(ev) {
         var medText = tryParseJSON(content) ? content : T['Mediator'];
         showVerdict(medText);
         pip('Mediator','ok'); prefetchTTS('Mediator'); qTTS('Mediator');
+      } else {
+        // Idea 8: Show mediator deliberation status
+        showDebateStatus('Mediator is deliberating...');
       }
       break;
     case 'Redliner':
       pip('Redliner','on');
+      if (!ev.is_final) {
+        showDebateStatus('Drafting redline suggestions...');
+      }
       // Don't render from streaming - wait for done event to fetch structured data
       if (ev.is_final) {
         pip('Redliner','ok');
@@ -662,17 +674,17 @@ function renderDebateArena() {
 }
 
 function showDebateStatus(message) {
-  // Show a loading indicator below the existing debate rounds
+  // Idea 8: Show a rich loading indicator below the existing debate rounds
   var existing = el.center.querySelector('.debate-status');
   if (!existing) {
     var statusEl = document.createElement('div');
     statusEl.className = 'debate-status';
     statusEl.setAttribute('role', 'status');
-    statusEl.textContent = message;
     el.center.appendChild(statusEl);
-  } else {
-    existing.textContent = message;
+    existing = statusEl;
   }
+  // Safe: message is hardcoded from our switch cases, not user input
+  existing.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;vertical-align:text-bottom;animation:stepPulse 2s ease-in-out infinite">forum</span> ' + message; // eslint-disable-line no-unsanitized/property
 }
 
 function msg(text, side, label, isError) {

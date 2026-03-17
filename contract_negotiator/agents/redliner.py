@@ -3,13 +3,8 @@ import json
 from google.adk.agents import LlmAgent
 from contract_negotiator.models.schemas import RedlinedContract
 
-
-def _redliner_instruction(ctx):
-    clauses = ctx.state.get("clauses", {})
-    final_report = ctx.state.get("final_report", {})
-    buyer_analysis = ctx.state.get("buyer_analysis", {})
-    seller_analysis = ctx.state.get("seller_analysis", {})
-    return f"""You are a legal document editor. Given the original contract clauses and the mediator's
+# Idea 6: Static instruction prefix FIRST — maximizes Vertex AI implicit prefix caching
+_REDLINER_STATIC = """You are a legal document editor. Given the original contract clauses and the mediator's
 final report, produce a redlined version of the contract.
 
 RULES:
@@ -25,7 +20,15 @@ REVISION STYLE:
   NOT: "Provider's liability should be higher"
 - Preserve the contract's voice and formatting style
 - Mark every change with changed=true
+"""
 
+
+def _redliner_instruction(ctx):
+    clauses = ctx.state.get("clauses", {})
+    final_report = ctx.state.get("final_report", {})
+    buyer_analysis = ctx.state.get("buyer_analysis", {})
+    seller_analysis = ctx.state.get("seller_analysis", {})
+    return f"""{_REDLINER_STATIC}
 Original clauses: {json.dumps(clauses, indent=2, default=str)}
 Mediator's report: {json.dumps(final_report, indent=2, default=str)}
 Buyer's analysis: {json.dumps(buyer_analysis, indent=2, default=str)}
