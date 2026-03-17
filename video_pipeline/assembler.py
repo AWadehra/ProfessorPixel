@@ -10,6 +10,7 @@ from moviepy import (
     TextClip,
     VideoFileClip,
     concatenate_videoclips,
+    vfx,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,7 +62,7 @@ def assemble_video(scenes: list[dict], title: str, output_path: str) -> str:
 
             # Sync video duration to match audio
             if audio_duration > video_duration:
-                video = video.loop(duration=audio_duration)
+                video = video.with_effects([vfx.Loop(duration=audio_duration)])
             else:
                 video = video.subclipped(0, audio_duration)
             loaded_resources.append(video)

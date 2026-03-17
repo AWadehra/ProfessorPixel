@@ -17,20 +17,23 @@ from .config import get_settings
 
 logger = logging.getLogger(__name__)
 
-_client = None
+import threading
+
+_thread_local = threading.local()
 
 
 def _get_client() -> genai.Client:
-    """Lazily initialize the Vertex AI genai client."""
-    global _client
-    if _client is None:
+    """Get a thread-local Vertex AI genai client (httpx is not thread-safe)."""
+    client = getattr(_thread_local, "genai_client", None)
+    if client is None:
         settings = get_settings()
-        _client = genai.Client(
+        client = genai.Client(
             vertexai=True,
             project=settings.google_cloud_project,
             location=settings.google_cloud_location,
         )
-    return _client
+        _thread_local.genai_client = client
+    return client
 
 
 _storage_client = None
