@@ -156,6 +156,14 @@ def _add_overlays(
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
+        if "No such filter" in result.stderr or "drawtext" in result.stderr:
+            logger.warning(
+                "drawtext filter not available (FFmpeg missing libfreetype). "
+                "Skipping title/subtitle overlays — copying concat output directly."
+            )
+            import shutil
+            shutil.copy2(input_path, output_path)
+            return output_path
         raise RuntimeError(f"FFmpeg overlay failed: {result.stderr}")
     logger.info("Overlays added: %s", output_path)
     return output_path

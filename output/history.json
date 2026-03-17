@@ -1,0 +1,38 @@
+[
+  {
+    "run_id": "20260317_025803_b87e8a88",
+    "topic": "how do I make money to buy a Porsche 911 GT3 RS?",
+    "style": "animated",
+    "timestamp": "2026-03-17T02:59:39.080814",
+    "path": "output/20260317_025803_b87e8a88/final_video.mp4",
+    "scenes": 8,
+    "succeeded": 8
+  },
+  {
+    "run_id": "20260317_025427_1dc36443",
+    "topic": "how to I repaint my Ferrari 458 Italia?",
+    "style": "cinematic",
+    "timestamp": "2026-03-17T02:56:03.140208",
+    "path": "output/20260317_025427_1dc36443/final_video.mp4",
+    "scenes": 8,
+    "succeeded": 8
+  },
+  {
+    "run_id": "20260317_025154_fd28defc",
+    "topic": "How do I change tires if I have a puncture on my bmw g20?",
+    "style": "documentary",
+    "timestamp": "2026-03-17T02:53:23.895664",
+    "path": "output/20260317_025154_fd28defc/final_video.mp4",
+    "scenes": 7,
+    "succeeded": 7
+  },
+  {
+    "run_id": "20260317_024809_dcad8d08",
+    "topic": "How do I change tires if I have a puncture on my bmw g20?",
+    "style": "whiteboard",
+    "timestamp": "2026-03-17T02:49:31.402252",
+    "path": "output/20260317_024809_dcad8d08/final_video.mp4",
+    "scenes": 7,
+    "succeeded": 7
+  }
+]
