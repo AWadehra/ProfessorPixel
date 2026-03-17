@@ -13,6 +13,7 @@ import tempfile
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from dotenv import load_dotenv
 
 from .assembler import assemble_video
 from .storyboard import generate_storyboard
@@ -20,6 +21,8 @@ from .tts import generate_all_narrations
 from .video_gen import generate_all_videos
 
 logger = logging.getLogger(__name__)
+
+load_dotenv()  # Load environment variables from .env file if present
 
 
 @dataclass
