@@ -1,0 +1,29 @@
+# Credentials & secrets
+gcp.md
+.env
+.env.*
+*.env.*
+contract_negotiator/.env
+service-account*.json
+*-key.json
+credentials.json
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Runtime
+*.log
+.adk/
+contract_negotiator/.adk/
+
+# IDE
+.vscode/
+.idea/
+*.swp

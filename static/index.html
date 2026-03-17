@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Contract Negotiator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="/style.css"/>
+  <link rel="stylesheet" href="/print.css" media="print"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@300..700&family=JetBrains+Mono:wght@400;500&display=swap" media="print" onload="this.media='all'"/>
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@300..700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" media="print" onload="this.media='all'"/>
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"></noscript>
+</head>
+<body>
+
+  <!-- ambient blobs behind glass panels -->
+  <div class="ambient" aria-hidden="true"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- ═══ UPLOAD ═══ -->
+  <div id="v-upload" class="view show">
+    <nav class="topnav" role="banner">
+      <div class="brand" aria-label="Contract Negotiator home">
+        <div class="brandmark" aria-hidden="true"></div>Contract Negotiator
+      </div>
+      <div class="chips" aria-label="Technology stack" role="list">
+        <span class="chip" role="listitem">Vertex AI</span><span class="chip" role="listitem">Gemini 2.5</span><span class="chip" role="listitem">ADK</span><span class="chip" role="listitem">Document AI</span><span class="chip" role="listitem">Cloud TTS</span><span class="chip accent" role="listitem">9 GCP</span>
+      </div>
+      <button id="theme-toggle" class="ghost-btn theme-toggle" aria-label="Toggle light/dark theme" aria-pressed="false">
+        <span class="material-symbols-outlined theme-icon" aria-hidden="true">dark_mode</span>
+      </button>
+    </nav>
+    <main class="hero">
+      <div class="hero-inner">
+        <span class="kicker">Multi-Agent Adversarial Analysis</span>
+        <h1>Three AI lawyers.<br/><em>One verdict.</em></h1>
+        <p class="desc">Upload any contract. Our agents argue both sides, debate three rounds, and deliver a balanced risk assessment.</p>
+
+        <!-- Glow-border card -->
+        <div class="glow-wrap">
+          <div class="glow-border"></div>
+          <div class="input-card">
+            <div class="tabs"><button class="tab on" data-t="paste">Paste text</button><button class="tab" data-t="upload">Upload file</button></div>
+            <div id="p-paste" class="pane">
+              <textarea id="inp" spellcheck="false" placeholder="Paste your contract, agreement, or Terms of Service..." aria-label="Contract text input" aria-describedby="chars"></textarea>
+              <div class="inp-meta"><span id="chars">0 chars</span></div>
+            </div>
+            <div id="p-upload" class="pane hide">
+              <div class="drop" id="drop" role="button" tabindex="0" aria-label="Click or drop a file to upload">
+                <span class="material-symbols-outlined drop-icon" aria-hidden="true">upload_file</span>
+                <p>Drop a photo or PDF of a contract</p>
+                <span>Processed by Document AI + Cloud Storage</span>
+              </div>
+              <input type="file" id="fup" accept=".jpg,.jpeg,.png,.pdf,.tiff" hidden/>
+            </div>
+            <button id="go" class="go-btn" disabled aria-disabled="true" aria-label="Analyze contract">
+              <span class="material-symbols-outlined go-icon" aria-hidden="true">science</span>
+              <span class="go-label">Analyze Contract</span>
+              <span class="material-symbols-outlined go-arr" aria-hidden="true">arrow_forward</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flow" aria-label="Analysis pipeline steps">
+          <div class="fstep"><span class="fstep-num"><span class="material-symbols-outlined">description</span></span><span class="fstep-label">Extract</span></div>
+          <div class="fline" aria-hidden="true"></div>
+          <div class="fstep"><span class="fstep-num"><span class="material-symbols-outlined">groups</span></span><span class="fstep-label">Dual Analysis</span></div>
+          <div class="fline" aria-hidden="true"></div>
+          <div class="fstep"><span class="fstep-num"><span class="material-symbols-outlined">forum</span></span><span class="fstep-label">3-Round Debate</span></div>
+          <div class="fline" aria-hidden="true"></div>
+          <div class="fstep"><span class="fstep-num"><span class="material-symbols-outlined">gavel</span></span><span class="fstep-label">Verdict</span></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ═══ ANALYSIS ═══ -->
+  <div id="v-analysis" class="view">
+    <header class="bar">
+      <div class="brandmark sm" aria-hidden="true"></div>
+      <div class="stepper" role="list" aria-label="Analysis pipeline progress">
+        <div class="step" data-s="ClauseExtractor" role="listitem" aria-label="Extract clauses">
+          <div class="step-circle"><span class="material-symbols-outlined">description</span></div>
+          <span class="step-label">Extract</span>
+        </div><div class="step-line" aria-hidden="true"><div class="step-line-fill"></div></div>
+        <div class="step" data-s="BuyerLawyer" role="listitem" aria-label="Buyer analysis">
+          <div class="step-circle"><span class="material-symbols-outlined">shield_person</span></div>
+          <span class="step-label">Buyer</span>
+        </div><div class="step-line" aria-hidden="true"><div class="step-line-fill"></div></div>
+        <div class="step" data-s="SellerLawyer" role="listitem" aria-label="Seller analysis">
+          <div class="step-circle"><span class="material-symbols-outlined">storefront</span></div>
+          <span class="step-label">Seller</span>
+        </div><div class="step-line" aria-hidden="true"><div class="step-line-fill"></div></div>
+        <div class="step" data-s="DebateRounds" role="listitem" aria-label="Debate rounds">
+          <div class="step-circle"><span class="material-symbols-outlined">forum</span></div>
+          <span class="step-label">Debate</span>
+        </div><div class="step-line" aria-hidden="true"><div class="step-line-fill"></div></div>
+        <div class="step" data-s="Mediator" role="listitem" aria-label="Mediator verdict">
+          <div class="step-circle"><span class="material-symbols-outlined">gavel</span></div>
+          <span class="step-label">Verdict</span>
+        </div><div class="step-line" aria-hidden="true"><div class="step-line-fill"></div></div>
+        <div class="step" data-s="Redliner" role="listitem" aria-label="Contract redlining">
+          <div class="step-circle"><span class="material-symbols-outlined">edit_note</span></div>
+          <span class="step-label">Redline</span>
+        </div>
+      </div>
+      <button id="again" class="ghost-btn" aria-label="Start new analysis"><span class="material-symbols-outlined" style="font-size:16px">add</span> New Analysis</button>
+    </header>
+
+    <div class="arena">
+      <section class="panel" id="pan-buyer" role="region" aria-label="Buyer's lawyer analysis">
+        <div class="ptop blue-tint">
+          <span class="material-symbols-outlined panel-icon blue-icon" aria-hidden="true">shield_person</span>
+          <div><h3>Buyer's Lawyer</h3><small>Protecting the client</small></div>
+          <button class="mic" data-a="BuyerLawyer" aria-label="Play Buyer's Lawyer audio" aria-pressed="false"><span class="material-symbols-outlined">volume_up</span></button>
+        </div>
+        <div class="pbody" id="c-buyer" aria-live="polite"></div>
+      </section>
+
+      <section class="panel panel-wide" id="pan-center" role="region" aria-label="Debate arena">
+        <div class="ptop purple-tint">
+          <span class="material-symbols-outlined panel-icon purple-icon" aria-hidden="true">forum</span>
+          <div><h3>Debate Arena</h3><small>Adversarial negotiation</small></div>
+        </div>
+        <div class="pbody" id="c-center" aria-live="off"></div>
+      </section>
+
+      <section class="panel" id="pan-seller" role="region" aria-label="Seller's lawyer analysis">
+        <div class="ptop orange-tint">
+          <span class="material-symbols-outlined panel-icon orange-icon" aria-hidden="true">storefront</span>
+          <div><h3>Seller's Lawyer</h3><small>Defending the provider</small></div>
+          <button class="mic" data-a="SellerLawyer" aria-label="Play Seller's Lawyer audio" aria-pressed="false"><span class="material-symbols-outlined">volume_up</span></button>
+        </div>
+        <div class="pbody" id="c-seller" aria-live="polite"></div>
+      </section>
+    </div>
+
+    <!-- CONTRACT HEATMAP -->
+    <div id="heatmap" class="heatmap closed" role="region" aria-label="Contract risk heatmap">
+      <div class="hm-top">
+        <span class="material-symbols-outlined section-icon" aria-hidden="true">local_fire_department</span>
+        <div><h3>Contract Heatmap</h3><small>Click any clause to see both perspectives</small></div>
+      </div>
+      <div class="hm-body" id="hm-clauses"></div>
+    </div>
+
+    <div id="verdict" class="verdict closed" role="region" aria-label="Mediator's verdict" aria-live="polite">
+      <div class="vtop">
+        <span class="material-symbols-outlined section-icon" aria-hidden="true">balance</span>
+        <div><h3>Mediator's Verdict</h3><small>Balanced risk assessment</small></div>
+        <div class="verdict-actions">
+          <button id="export-sheets" class="ghost-btn" aria-label="Export to Google Sheets" disabled>
+            <span class="material-symbols-outlined" aria-hidden="true">table_chart</span>
+            Export Sheets
+          </button>
+          <button id="export-pdf" class="ghost-btn" aria-label="Export analysis as PDF">
+            <span class="material-symbols-outlined" aria-hidden="true">download</span>
+            Export PDF
+          </button>
+          <button class="mic" data-a="Mediator" aria-label="Play Mediator verdict audio" aria-pressed="false"><span class="material-symbols-outlined">volume_up</span></button>
+        </div>
+      </div>
+      <div class="vbody" id="c-verdict"></div>
+    </div>
+
+    <!-- REDLINED CONTRACT -->
+    <div id="redline" class="redline-panel closed" role="region" aria-label="Redlined contract">
+      <div class="rl-top">
+        <span class="material-symbols-outlined section-icon" aria-hidden="true">edit_note</span>
+        <div><h3>Redlined Contract</h3><small>Suggested changes with tracked edits</small></div>
+      </div>
+      <div class="rl-body" id="rl-content"></div>
+    </div>
+  </div>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>
