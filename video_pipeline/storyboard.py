@@ -94,12 +94,19 @@ hard limit (approximately 8 seconds of speech). Prefer a single punchy sentence.
 viewer sees on screen.
 6. Return a JSON object with a "title" (a compelling video title) and a \
 "scenes" array.
-7. {STYLE_DIRECTIVES.get(style, STYLE_DIRECTIVES["cinematic"])}\
+7. SCENE CONTINUITY (critical): Each scene must share a visual bridge with \
+its neighbors — like overlapping chunks. The ending visual of scene N must \
+match the opening visual of scene N+1: same subject, environment, or camera \
+angle. For example, if scene 2 ends on "camera slowly zooms out from a prism \
+splitting white light into a rainbow", scene 3 should open with "starting \
+from a wide shot of a prism refracting light, the camera pans to reveal..." \
+This creates seamless flow between clips even without video transitions.
+8. {STYLE_DIRECTIVES.get(style, STYLE_DIRECTIVES["cinematic"])}\
 """
 
 
-def _cache_key(topic: str, num_scenes: int) -> str:
-    raw = f"{topic.strip().lower()}:{num_scenes}"
+def _cache_key(topic: str, num_scenes: int, style: str = "cinematic") -> str:
+    raw = f"{topic.strip().lower()}:{num_scenes}:{style}"
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
@@ -135,7 +142,7 @@ def generate_storyboard(topic: str, num_scenes: int = 8, style: str = "cinematic
         raise ValueError("Topic must be a non-empty string.")
 
     # Check cache
-    key = _cache_key(topic, num_scenes)
+    key = _cache_key(topic, num_scenes, style)
     cache_path = os.path.join(CACHE_DIR, f"{key}.json")
     if use_cache and os.path.exists(cache_path):
         logger.info("Storyboard cache hit for topic: %s", topic)
