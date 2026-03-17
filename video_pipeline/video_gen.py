@@ -78,6 +78,7 @@ def generate_scene_video(
     video_id: str,
     output_dir: str,
     on_complete: callable = None,
+    seed: int | None = None,
 ) -> str:
     """Generate a video for a single scene using Veo models.
 
@@ -104,15 +105,19 @@ def generate_scene_video(
     logger.info("Generating video for %s with prompt: %s", scene_id, prompt)
 
     try:
+        video_config = types.GenerateVideosConfig(
+            aspect_ratio="16:9",
+            number_of_videos=1,
+            duration_seconds=8,
+            output_gcs_uri=output_gcs_uri,
+        )
+        if seed is not None:
+            video_config.seed = seed
+
         operation = _get_client().models.generate_videos(
             model="veo-2.0-generate-001",
             prompt=prompt,
-            config=types.GenerateVideosConfig(
-                aspect_ratio="16:9",
-                number_of_videos=1,
-                duration_seconds=8,
-                output_gcs_uri=output_gcs_uri,
-            ),
+            config=video_config,
         )
 
         # Poll until the operation completes (with timeout)
@@ -124,7 +129,7 @@ def generate_scene_video(
                     f"Veo video generation for {scene_id} timed out after {max_poll_seconds}s"
                 )
             logger.info("Waiting for %s video generation to complete...", scene_id)
-            time.sleep(10)
+            time.sleep(settings.veo_poll_interval_seconds)
             operation = _get_client().operations.get(operation)
 
         logger.info("Video generation complete for %s", scene_id)
@@ -156,15 +161,24 @@ def generate_scene_video(
 
         return local_path
 
-    except Exception:
-        logger.exception("Failed to generate video for %s", scene_id)
-        raise
+    except Exception as exc:
+        logger.warning("Veo failed for %s (%s), falling back to Imagen 3 + Ken Burns", scene_id, exc)
+        try:
+            from .image_gen import generate_scene_image_fallback
+            fallback_path = generate_scene_image_fallback(scene, output_dir)
+            if on_complete:
+                on_complete()
+            return fallback_path
+        except Exception:
+            logger.exception("Imagen 3 fallback also failed for %s", scene_id)
+            raise
 
 
 def generate_all_videos(
     scenes: list,
     output_dir: str,
     on_scene_complete: callable = None,
+    seed: int | None = None,
 ) -> list[str | None]:
     """Generate videos for all scenes in parallel.
 
@@ -190,6 +204,7 @@ def generate_all_videos(
                     video_id,
                     output_dir,
                     on_scene_complete,
+                    seed,
                 )
                 for scene in scenes
             ]

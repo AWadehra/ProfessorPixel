@@ -8,8 +8,13 @@ class Settings(BaseSettings):
     google_cloud_location: str = "us-central1"
     gcs_bucket_name: str
     veo_poll_timeout_seconds: int = 300
+    veo_poll_interval_seconds: int = 5
     default_voice: str = "en-US-Neural2-J"
+    default_speaking_rate: float = 0.9
     max_scenes: int = 10
+    storyboard_model: str = "gemini-2.5-flash"
+    ambient_music_path: str | None = None
+    burn_subtitles: bool = True
 
     class Config:
         env_file = ".env"

@@ -7,10 +7,12 @@ and final video assembly.
 
 import logging
 import os
+import random
 import shutil
 import tempfile
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 
 from .assembler import assemble_video
 from .storyboard import generate_storyboard
@@ -20,14 +22,25 @@ from .video_gen import generate_all_videos
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class PipelineResult:
+    video_path: str
+    total_scenes: int
+    succeeded_scenes: int
+    failed_scene_numbers: list[int] = field(default_factory=list)
+
+
 def run_pipeline(
     topic: str,
     output_dir: str | None = None,
     progress_callback=None,
     num_scenes: int = 8,
     voice_name: str | None = None,
+    style: str = "cinematic",
+    speaking_rate: float | None = None,
     cleanup_intermediates: bool = True,
-) -> str:
+    storyboard: dict | None = None,
+) -> PipelineResult:
     """
     Full pipeline: topic -> storyboard -> parallel video+TTS -> assembly -> final .mp4
 
@@ -37,10 +50,13 @@ def run_pipeline(
         progress_callback: Optional callable(progress_float, description_str).
         num_scenes: Number of scenes to generate (default 8).
         voice_name: TTS voice name (None for default).
+        style: Visual style preset (cinematic/documentary/whiteboard/animated/sci-fi).
+        speaking_rate: TTS speaking rate (None for default from config).
         cleanup_intermediates: Remove video/audio dirs after assembly.
+        storyboard: Pre-built storyboard dict to skip phase 1.
 
     Returns:
-        Path to the final assembled .mp4 video.
+        PipelineResult with video path and scene success info.
     """
     if output_dir is None:
         output_dir = tempfile.mkdtemp(prefix="eduvid_")
@@ -51,19 +67,28 @@ def run_pipeline(
     os.makedirs(video_dir, exist_ok=True)
     os.makedirs(audio_dir, exist_ok=True)
 
-    # Phase 1: Generate storyboard
+    # Phase 1: Generate or use provided storyboard
     _update_progress(progress_callback, 0.0, "Generating storyboard...")
-    logger.info("Phase 1: Generating storyboard for topic: %s", topic)
-    storyboard = generate_storyboard(topic, num_scenes=num_scenes)
-    scenes = storyboard["scenes"]
-    title = storyboard["title"]
-    logger.info("Storyboard generated: '%s' with %d scenes", title, len(scenes))
+    if storyboard is not None:
+        logger.info("Phase 1: Using provided storyboard")
+        scenes = storyboard["scenes"]
+        title = storyboard["title"]
+    else:
+        logger.info("Phase 1: Generating storyboard for topic: %s", topic)
+        storyboard = generate_storyboard(topic, num_scenes=num_scenes, style=style)
+        scenes = storyboard["scenes"]
+        title = storyboard["title"]
+    logger.info("Storyboard: '%s' with %d scenes", title, len(scenes))
+
+    # Generate a consistent seed for all Veo scenes
+    veo_seed = random.randint(0, 2**31)
+    logger.info("Using Veo seed: %d for visual consistency", veo_seed)
 
     # Phase 2 & 3: Generate videos and TTS in parallel with scene-level progress
     _update_progress(progress_callback, 0.10, "Generating video clips and narration...")
     logger.info("Phase 2 & 3: Generating videos and narrations in parallel")
 
-    total_assets = len(scenes) * 2  # videos + audio files
+    total_assets = len(scenes) * 2
     completed_count = 0
     progress_lock = threading.Lock()
 
@@ -80,10 +105,10 @@ def run_pipeline(
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         video_future = executor.submit(
-            generate_all_videos, scenes, video_dir, _on_asset_complete
+            generate_all_videos, scenes, video_dir, _on_asset_complete, veo_seed
         )
         audio_future = executor.submit(
-            generate_all_narrations, scenes, audio_dir, voice_name, _on_asset_complete
+            generate_all_narrations, scenes, audio_dir, voice_name, _on_asset_complete, speaking_rate
         )
 
         video_paths = video_future.result()
@@ -91,6 +116,7 @@ def run_pipeline(
 
     # Filter out failed scenes (partial success)
     assembly_scenes = []
+    failed_scene_numbers = []
     for i, scene in enumerate(scenes):
         v_path = video_paths[i] if i < len(video_paths) else None
         a_path = audio_paths[i] if i < len(audio_paths) else None
@@ -102,6 +128,7 @@ def run_pipeline(
                 "narration": scene["narration"],
             })
         else:
+            failed_scene_numbers.append(scene["scene_number"])
             logger.warning(
                 "Skipping scene %d: video=%s, audio=%s",
                 scene["scene_number"],
@@ -129,7 +156,13 @@ def run_pipeline(
 
     _update_progress(progress_callback, 1.0, "Done!")
     logger.info("Pipeline complete: %s", result_path)
-    return result_path
+
+    return PipelineResult(
+        video_path=result_path,
+        total_scenes=total,
+        succeeded_scenes=succeeded,
+        failed_scene_numbers=failed_scene_numbers,
+    )
 
 
 def _cleanup_intermediates(video_dir: str, audio_dir: str):

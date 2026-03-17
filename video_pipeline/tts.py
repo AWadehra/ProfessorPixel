@@ -31,11 +31,18 @@ def _synthesize(client, synthesis_input, voice, audio_config):
     )
 
 
+def _build_ssml(text: str, speaking_rate: float = 0.9) -> str:
+    """Wrap narration text in SSML with controlled speaking rate."""
+    safe = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return f'<speak><prosody rate="{speaking_rate}">{safe}</prosody></speak>'
+
+
 def generate_narration(
     text: str,
     output_path: str,
     voice_name: str | None = None,
     on_complete: callable = None,
+    speaking_rate: float | None = None,
 ) -> str:
     """Synthesize speech from text and write the audio to output_path.
 
@@ -51,13 +58,17 @@ def generate_narration(
     Raises:
         RuntimeError: If speech synthesis or file writing fails.
     """
+    settings = get_settings()
     if voice_name is None:
-        voice_name = get_settings().default_voice
+        voice_name = settings.default_voice
+    if speaking_rate is None:
+        speaking_rate = settings.default_speaking_rate
 
     try:
         client = _get_tts_client()
 
-        synthesis_input = texttospeech.SynthesisInput(text=text)
+        ssml = _build_ssml(text, speaking_rate)
+        synthesis_input = texttospeech.SynthesisInput(ssml=ssml)
 
         voice = texttospeech.VoiceSelectionParams(
             language_code=voice_name[:5],  # e.g. "en-US"
@@ -94,6 +105,7 @@ def generate_all_narrations(
     output_dir: str,
     voice_name: str | None = None,
     on_scene_complete: callable = None,
+    speaking_rate: float | None = None,
 ) -> list[str | None]:
     """Generate narration audio for every scene in parallel.
 
@@ -125,7 +137,7 @@ def generate_all_narrations(
     with ThreadPoolExecutor() as executor:
         future_to_scene = {
             executor.submit(
-                generate_narration, text, path, voice_name, on_scene_complete
+                generate_narration, text, path, voice_name, on_scene_complete, speaking_rate
             ): scene_num
             for scene_num, (text, path) in tasks.items()
         }

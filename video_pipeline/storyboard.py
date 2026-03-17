@@ -37,7 +37,44 @@ def _get_client() -> genai.Client:
     return _client
 
 
-def _build_system_prompt(num_scenes: int) -> str:
+FEW_SHOT_EXAMPLE = """\
+
+Here is an example of a high-quality scene for reference:
+{
+  "scene_number": 1,
+  "duration_seconds": 8,
+  "veo_prompt": "Extreme close-up of a gleaming red apple resting motionless on a polished oak table inside a sunlit university laboratory. Camera slowly pushes in. Warm golden afternoon light through tall windows. Shallow depth of field, 35mm cinematic, educational video style.",
+  "narration": "An object at rest stays at rest until an outside force acts on it.",
+  "visual_description": "Still apple on a table — inertia visualised"
+}
+Use this level of visual specificity for every scene.
+"""
+
+STYLE_DIRECTIVES = {
+    "cinematic": (
+        "Visual style: cinematic, film-quality, shallow depth of field, warm color grade. "
+        'Append "educational video style, cinematic" to every veo_prompt.'
+    ),
+    "documentary": (
+        "Visual style: documentary, natural lighting, handheld feel, desaturated realism. "
+        'Append "documentary style, natural lighting, 4K" to every veo_prompt.'
+    ),
+    "whiteboard": (
+        "Visual style: whiteboard animation on a white background, black marker lines drawing diagrams. "
+        'Append "whiteboard animation, clean white background, black ink drawing" to every veo_prompt.'
+    ),
+    "animated": (
+        "Visual style: bright 2D cartoon animation, flat design, vivid saturated colors. "
+        'Append "2D cartoon animation, flat design, bright colors" to every veo_prompt.'
+    ),
+    "sci-fi": (
+        "Visual style: futuristic sci-fi aesthetic, neon lighting, holographic displays, dark environment. "
+        'Append "futuristic sci-fi, neon holographic, dark cinematic" to every veo_prompt.'
+    ),
+}
+
+
+def _build_system_prompt(num_scenes: int, style: str = "cinematic") -> str:
     return f"""\
 You are an expert educational video planner. Given a topic, you decompose it \
 into a storyboard of {num_scenes} scenes for a short educational video.
@@ -51,12 +88,13 @@ or vague language. Always append "educational video style, cinematic" \
 to every veo_prompt.
 3. Keep the visual style consistent across all scenes (same color palette, \
 lighting mood, and cinematographic approach).
-4. The "narration" for each scene must be concise: 1-2 sentences that can \
-be comfortably spoken aloud in 8 seconds.
+4. The "narration" for each scene MUST be 20 words or fewer — that is a \
+hard limit (approximately 8 seconds of speech). Prefer a single punchy sentence.
 5. The "visual_description" is a short plain-English summary of what the \
 viewer sees on screen.
 6. Return a JSON object with a "title" (a compelling video title) and a \
-"scenes" array.\
+"scenes" array.
+7. {STYLE_DIRECTIVES.get(style, STYLE_DIRECTIVES["cinematic"])}\
 """
 
 
@@ -66,9 +104,9 @@ def _cache_key(topic: str, num_scenes: int) -> str:
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=30), reraise=True)
-def _call_gemini(client: genai.Client, user_prompt: str, system_prompt: str) -> str:
+def _call_gemini(client: genai.Client, user_prompt: str, system_prompt: str, model: str = "gemini-2.5-flash") -> str:
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model=model,
         contents=user_prompt,
         config=types.GenerateContentConfig(
             system_instruction=system_prompt,
@@ -78,7 +116,7 @@ def _call_gemini(client: genai.Client, user_prompt: str, system_prompt: str) -> 
     return response.text
 
 
-def generate_storyboard(topic: str, num_scenes: int = 8, use_cache: bool = True) -> dict:
+def generate_storyboard(topic: str, num_scenes: int = 8, style: str = "cinematic", use_cache: bool = True) -> dict:
     """Generate a structured storyboard for an educational video on the given topic.
 
     Args:
@@ -105,17 +143,19 @@ def generate_storyboard(topic: str, num_scenes: int = 8, use_cache: bool = True)
             return json.load(f)
 
     client = _get_client()
-    system_prompt = _build_system_prompt(num_scenes)
+    settings = get_settings()
+    system_prompt = _build_system_prompt(num_scenes, style=style)
 
     user_prompt = (
         f"Create a detailed storyboard for an educational video about: {topic}\n\n"
-        f"Return exactly {num_scenes} scenes. Each scene must have: scene_number, "
+        + FEW_SHOT_EXAMPLE
+        + f"\nReturn exactly {num_scenes} scenes. Each scene must have: scene_number, "
         "duration_seconds (always 8), veo_prompt, narration, and visual_description. "
         "Make sure the output is a valid JSON object."
     )
 
     try:
-        raw_text = _call_gemini(client, user_prompt, system_prompt)
+        raw_text = _call_gemini(client, user_prompt, system_prompt, model=settings.storyboard_model)
     except Exception as exc:
         raise RuntimeError(f"Gemini API call failed: {exc}") from exc
 
