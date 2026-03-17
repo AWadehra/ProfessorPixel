@@ -379,10 +379,12 @@ function onEv(ev) {
       pip('DebateRounds','on'); rmSkel(el.center);
       if (ev.is_final) {
         debR++;
-        const fullText = T['BuyerRebuttal'] || content;
-        const roundNum = getRebuttalRound(fullText, Math.ceil(debR/2));
-        if (!debateRounds[roundNum - 1]) debateRounds[roundNum - 1] = { round: roundNum, buyer: '', seller: '' };
-        debateRounds[roundNum - 1].buyer = renderStructuredDebate(fullText, 'b', 'Buyer argues');
+        // Try content first (clean final event), then accumulated T[] as fallback
+        var brText = tryParseJSON(content) ? content : T['BuyerRebuttal'];
+        var brRound = getRebuttalRound(brText, Math.ceil(debR/2));
+        if (!debateRounds[brRound - 1]) debateRounds[brRound - 1] = { round: brRound, buyer: '', seller: '' };
+        debateRounds[brRound - 1].buyer = renderStructuredDebate(brText, 'b', 'Buyer argues');
+        T['BuyerRebuttal'] = ''; // reset for next round
         renderDebateArena();
         scr(el.center); prefetchTTS('BuyerRebuttal'); qTTS('BuyerRebuttal');
       } else {
@@ -393,10 +395,11 @@ function onEv(ev) {
       pip('DebateRounds','on');
       if (ev.is_final) {
         debR++;
-        const fullText = T['SellerRebuttal'] || content;
-        const roundNum = getRebuttalRound(fullText, Math.ceil(debR/2));
-        if (!debateRounds[roundNum - 1]) debateRounds[roundNum - 1] = { round: roundNum, buyer: '', seller: '' };
-        debateRounds[roundNum - 1].seller = renderStructuredDebate(fullText, 's', 'Seller counters');
+        var srText = tryParseJSON(content) ? content : T['SellerRebuttal'];
+        var srRound = getRebuttalRound(srText, Math.ceil(debR/2));
+        if (!debateRounds[srRound - 1]) debateRounds[srRound - 1] = { round: srRound, buyer: '', seller: '' };
+        debateRounds[srRound - 1].seller = renderStructuredDebate(srText, 's', 'Seller counters');
+        T['SellerRebuttal'] = ''; // reset for next round
         renderDebateArena();
         scr(el.center); prefetchTTS('SellerRebuttal'); qTTS('SellerRebuttal');
       } else {
@@ -406,7 +409,9 @@ function onEv(ev) {
     case 'Mediator':
       pip('DebateRounds','ok'); pip('Mediator','on');
       if (ev.is_final) {
-        showVerdict(T['Mediator'] || content);
+        // Try content first (clean final), then accumulated T[]
+        var medText = tryParseJSON(content) ? content : T['Mediator'];
+        showVerdict(medText);
         pip('Mediator','ok'); prefetchTTS('Mediator'); qTTS('Mediator');
       }
       break;
@@ -441,7 +446,8 @@ function renderStructuredAnalysis(jsonText, side) {
   const cls = side === 'b' ? 'm-b' : 'm-s';
   const label = side === 'b' ? 'Buyer\'s Analysis' : 'Seller\'s Analysis';
   let data;
-  try { data = JSON.parse(jsonText); } catch { return '<div class="m ' + cls + ' md-content">' + md(jsonText) + '</div>'; }
+  data = tryParseJSON(jsonText);
+  if (!data) return '<div class="m ' + cls + ' md-content">' + md(jsonText) + '</div>';
 
   let html = '<div class="m ' + cls + '"><div class="m-lbl">' + label + '</div>';
   html += '<div style="font-size:.75rem;margin-bottom:.4rem"><strong>Overall Risk: </strong>';
@@ -569,15 +575,34 @@ function renderDebate(text, side, label) {
   return html + '</div>';
 }
 
+// ── Robust JSON extraction — handles accumulated text with embedded JSON ──
+function tryParseJSON(text) {
+  if (!text) return null;
+  // 1. Direct parse
+  try { return JSON.parse(text); } catch {}
+  // 2. Find the outermost { ... } in the text
+  var start = text.indexOf('{');
+  if (start === -1) return null;
+  var depth = 0, end = -1;
+  for (var i = start; i < text.length; i++) {
+    if (text[i] === '{') depth++;
+    else if (text[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+  }
+  if (end === -1) return null;
+  try { return JSON.parse(text.slice(start, end + 1)); } catch {}
+  return null;
+}
+
 // ── Structured debate rendering ──
 function getRebuttalRound(content, fallback) {
-  try { const d = JSON.parse(content); return d.round_number || fallback; } catch { return fallback; }
+  var d = tryParseJSON(content);
+  return (d && d.round_number) ? d.round_number : fallback;
 }
 
 function renderStructuredDebate(content, side, label) {
   const cls = side === 'b' ? 'm-b' : side === 's' ? 'm-s' : 'm-p';
-  let data;
-  try { data = JSON.parse(content); } catch { return renderDebate(content, side, label); }
+  var data = tryParseJSON(content);
+  if (!data) return renderDebate(content, side, label);
 
   if (!data.points || !data.points.length) return renderDebate(content, side, label);
 
@@ -897,8 +922,7 @@ function showVerdict(content){
   el.verdict.classList.remove('closed');
 
   // Try structured JSON first (FinalReport schema)
-  let data;
-  try { data = JSON.parse(content); } catch { data = null; }
+  var data = tryParseJSON(content);
 
   if (data && data.overall_fairness_score != null) {
     window._verdictData = data;
