@@ -1,0 +1,53 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: contract-negotiator
+  labels:
+    cloud.googleapis.com/project: qwiklabs-asl-02-93543dffae86
+    cloud.googleapis.com/location: europe-west4
+  
+  annotations:
+    # Network Security: must be set to 'all' to allow traffic from the public internet
+    run.googleapis.com/ingress: 'all'
+    # Explicitly enforces IAM token checks 
+    run.googleapis.com/invoker-iam-disabled: 'true'
+spec:
+  template:
+    spec:
+      serviceAccountName: "seed-sa@qwiklabs-asl-02-93543dffae86.iam.gserviceaccount.com"
+      containerConcurrency: 80 
+      timeoutSeconds: 300
+      containers:
+      - image: "europe-west4-docker.pkg.dev/qwiklabs-asl-02-93543dffae86/contractor-negotiator/backend@sha256:df64ec3f56e777f1804eb81698f4a1cd8fadf4b23d6c6d57ebeebb252667be12"
+        ports:
+        - containerPort: 8080
+        resources:
+          limits: 
+            cpu: 1000m
+            memory: 512Mi
+        env:
+        - name: GOOGLE_CLOUD_PROJECT
+          value: qwiklabs-asl-02-93543dffae86
+        - name: GOOGLE_CLOUD_LOCATION
+          value: europe-west4
+        - name: GCS_BUCKET_NAME
+          value: contract-negotiator-uploads-qwiklabs
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: "gemini-api-key"
+              key: "1"
+        - name: GOOGLE_GENAI_USE_VERTEXAI
+          value: "true"
+        - name: DOCAI_PROCESSOR_ID
+          value: a61cceaab857b5
+        - name: DOCAI_LOCATION
+          value: us
+        - name: GCS_BUCKET_NAME
+          value: contract-negotiator-uploads-qwiklabs
+        - name: ALLOWED_ORIGINS
+          value: "*"
+        - name: MAX_UPLOAD_BYTES
+          value: "10485760"
+        - name: MAX_CONTRACT_CHARS
+          value: "50000"
